@@ -37,6 +37,7 @@ fn main() {
 }
 
 /// Entry point for .gp5 parsing
+/// Entry point for .gp5 parsing
 fn parse_gp5(bytes: &[u8]) {
     println!("Parsing .gp5 file...");
     println!();
@@ -44,7 +45,6 @@ fn parse_gp5(bytes: &[u8]) {
     let mut cursor = 0;
 
     // --- Version string ---
-    // GP5 files start with a version string: 1 byte length + string bytes
     match read_version_string(bytes, &mut cursor) {
         Some(version) => println!("Version : {}", version),
         None => {
@@ -53,15 +53,20 @@ fn parse_gp5(bytes: &[u8]) {
         }
     }
 
-    // TODO: Parse header block (tempo, key, time signature)
-    // TODO: Parse track definitions (instrument, tuning, string count)
-    // TODO: Parse measure data (notes, effects, dynamics)
-    // TODO: Print track/tab data to terminal
+    // --- Song info ---
+    let title    = read_string(bytes, &mut cursor).unwrap_or_default();
+    let subtitle = read_string(bytes, &mut cursor).unwrap_or_default();
+    let artist   = read_string(bytes, &mut cursor).unwrap_or_default();
+    let album    = read_string(bytes, &mut cursor).unwrap_or_default();
 
-    println!();
-    println!("Parser skeleton in place — implementation in progress.");
+    println!("Title   : {}", title);
+    println!("Artist  : {}", artist);
+    println!("Album   : {}", album);
+
+    // TODO: Read tempo
+    // TODO: Parse track definitions
+    // TODO: Parse measure data
 }
-
 /// Reads the version string from the start of the file.
 /// GP format: byte[0] = string length, followed by that many ASCII bytes,
 /// padded to 31 bytes total.
@@ -82,4 +87,28 @@ fn read_version_string(bytes: &[u8], cursor: &mut usize) -> Option<String> {
     *cursor = 31;
 
     Some(version)
+}
+
+fn read_u32(bytes: &[u8], cursor: &mut usize) -> Option<u32> {
+    if *cursor + 4 > bytes.len() {
+        return None;
+    }
+    let value = u32::from_le_bytes([
+        bytes[*cursor],
+        bytes[*cursor + 1],
+        bytes[*cursor + 2],
+        bytes[*cursor + 3],
+    ]);
+    *cursor += 4;
+    Some(value)
+}
+
+fn read_string(bytes: &[u8], cursor: &mut usize) -> Option<String> {
+    let len = read_u32(bytes, cursor)? as usize;
+    if *cursor + len > bytes.len() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&bytes[*cursor..*cursor + len]).to_string();
+    *cursor += len;
+    Some(s)
 }
